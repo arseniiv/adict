@@ -18,7 +18,7 @@ import io
 import re
 
 from adict._data import *
-from adict._data import (FORMAT_NONE, FORMAT_SW, FORMAT_EM, FORMAT_REM)
+from adict._data import (FORMAT_NONE, FORMAT_SW, FORMAT_EM, FORMAT_REM, FORMAT_A)
 from adict._strings import *
 
 
@@ -141,7 +141,7 @@ def formatted(s):
     matches = re.findall(_format_re, normalize(s))
     if len(matches) == 1 and matches[0][0] != '':
         return matches[0][0]
-    def to_fmt(txt_none, txt_sw, txt_rem, txt_em):
+    def to_fmt(txt_none, txt_sw, txt_rem, txt_em, txt_a):
         if txt_none != '':
             return FORMAT_NONE, txt_none
         elif txt_sw != '':
@@ -150,6 +150,8 @@ def formatted(s):
             return FORMAT_REM, txt_rem
         elif txt_em != '':
             return FORMAT_EM, txt_em
+        elif txt_a != '':
+            return FORMAT_A, txt_a
     return [to_fmt(*m) for m in matches]
 
 
@@ -164,7 +166,7 @@ class SignatureLine(Line):
     
     def parse_line(state, dictionary, line, lineno):
         value = parse_bracketed(line, *section_brackets)
-        if value == None or value.lower() != signature_section_name:
+        if value is None or value.lower() != signature_section_name:
             return False, state
         return True, State.pre_section
 
@@ -173,7 +175,7 @@ class PropertiesSectionLine(Line):
     
     def parse_line(state, dictionary, line, lineno):
         value = parse_bracketed(line, *section_brackets)
-        if value == None or value.lower() != properties_section_name:
+        if value is None or value.lower() != properties_section_name:
             return False, state
         dictionary.properties_lineno = lineno
         return True, State.in_properties
@@ -183,7 +185,7 @@ class ArticlesSectionLine(Line):
     
     def parse_line(state, dictionary, line, lineno):
         value = parse_bracketed(line, *section_brackets)
-        if value == None or value.lower() != articles_section_name:
+        if value is None or value.lower() != articles_section_name:
             return False, state
         dictionary.articles_lineno = lineno
         return True, State.in_articles
@@ -204,6 +206,7 @@ class TitleLine(Line):
     """Article title."""
     
     def parse_line(state, dictionary, line, lineno):
+        _check_last_example_idiom(dictionary)
         a = Article(make_title(line))
         a.lineno = lineno
         dictionary._last_article = a
@@ -231,12 +234,12 @@ class AttributeLine(Line):
     
     def parse_line(state, dictionary, line, lineno):
         text = parse_bracketed(line, *transcription_brackets)
-        if text != None:
+        if text is not None:
             dictionary._last_article.transcriptions.append(text)
             return True, state
         if line.startswith(special_word_marker):
             sw, text = parse_special_word(line)
-            if sw != None:
+            if sw is not None:
                 if text == "":
                     dictionary._last_article.classes.append(sw)
                 else:
@@ -252,11 +255,12 @@ class DefinitionLine(Line):
     """One of article title meanings."""
     
     def parse_line(state, dictionary, line, lineno):
+        _check_last_example_idiom(dictionary)
         if line.startswith(meaning_marker):
             text = formatted(line[len(meaning_marker) :])
             d = Definition(text)
             dictionary._last_definition = d
-            if dictionary._last_article.content == None:
+            if dictionary._last_article.content is None:
                 dictionary._last_article.content = []
             dictionary._last_article.content.append(d)
             return True, State.in_definition
@@ -267,6 +271,7 @@ class AdditionLine(Line):
     """Additional meaning attribute."""
     
     def parse_line(state, dictionary, line, lineno):
+        _check_last_example_idiom(dictionary)
         if line.startswith(example_marker):
             text = formatted(line[len(example_marker) :])
             dictionary._last_example = text
@@ -293,12 +298,7 @@ class TranslationLine(Line):
     def parse_line(state, dictionary, line, lineno):
         if line.startswith(translation_marker):
             text = formatted(line[len(translation_marker) :])
-            if dictionary._last_example != None:
-                dictionary._last_definition.examples.append(
-                    (dictionary._last_example, text))
-            elif dictionary._last_idiom != None:
-                dictionary._last_definition.idioms.append(
-                    (dictionary._last_idiom, text))
+            _check_last_example_idiom(dictionary, text)
             return True, State.in_definition
         return False, state
 
@@ -317,17 +317,17 @@ class State:
     in_example = 6
     in_idiom = 7
     
-    _not_final_states = (in_example, in_idiom, pre_signature)
+    _not_final_states = (pre_signature)
     
     _expected_lines = {
-        pre_signature: (SignatureLine,),
+        pre_signature: (SignatureLine),
         pre_section: (PropertiesSectionLine, ArticlesSectionLine),
         in_properties: (NameValueLine, ArticlesSectionLine),
-        in_articles: (TitleLine,),
+        in_articles: (TitleLine),
         in_article: (AttributeLine, TitleLinkLine, DefinitionLine, TitleLine),
         in_definition: (AdditionLine, DefinitionLine, TitleLine),
-        in_example: (TranslationLine,),
-        in_idiom: (TranslationLine,)
+        in_example: (TranslationLine, AdditionLine, DefinitionLine, TitleLine),
+        in_idiom: (TranslationLine, AdditionLine, DefinitionLine, TitleLine)
         }
     
     @classmethod
@@ -340,5 +340,13 @@ class State:
         """Returns a tuple of Line subclasses applicable on the state."""
         return cls._expected_lines[state]
 
-
+def _check_last_example_idiom(dictionary, translation=None):
+    if dictionary._last_example is not None:
+        dictionary._last_definition.examples.append(
+            (dictionary._last_example, translation))
+        dictionary._last_example = None
+    elif dictionary._last_idiom is not None:
+        dictionary._last_definition.idioms.append(
+            (dictionary._last_idiom, translation))
+        dictionary._last_idiom = None
 

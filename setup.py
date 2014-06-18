@@ -10,7 +10,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "aDict2",
-    version = "0.1.0",
+    version = "0.1.1",
     packages = find_packages(),
     package_data = {
         '': ['*.txt'],
@@ -22,6 +22,6 @@ setup(
     description = "aDict dictionary format handling",
     long_description = open('README.txt').read(),
     license = "CC0",
-    keywords = "dictionary text",
+    keywords = "dictionary text format",
     url = "http://arseniiv.info/progr/adict",
 )

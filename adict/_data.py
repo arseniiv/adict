@@ -83,7 +83,7 @@ class Article:
             v.visit_transcription(e)
         for e in self.etymologies:
             v.visit_etymology(e)
-        if self.content != None:
+        if self.content is not None:
             if isinstance(self.content, list):
                 for e in self.content:
                     e._accept_visitor(v)
@@ -117,8 +117,8 @@ class Definition:
     
     def __init__(self, meaning=None):
         self.meaning = meaning
-        self.examples = [] # (text, text)
-        self.idioms = [] # (text, text)
+        self.examples = [] # (text, text=None)
+        self.idioms = [] # (text, text=None)
         self.links = [] # (type=None, (word, number))
     
     def _accept_visitor(self, v):
@@ -133,10 +133,10 @@ class Definition:
         v.visit_definition_end(self)
 
 
-# Values in Article.ertmologies, Definition.meaning, .examples, .idioms
+# Values in Article.etymologies, Definition.meaning, .examples, .idioms
 # can be strings or (FORMAT_x, str) tuple lists indicating formatted text
 FORMAT_NONE = 0  # plain text,                       in source: "abc"
 FORMAT_SW = 1    # special word (class, form etc.),  in source: "#abc#"
 FORMAT_REM = 2   # parenthesized italicized remark,  in source: "((abc))"
 FORMAT_EM = 3    # italicized text,                  in source: "''abc''"
-
+FORMAT_A = 4     # hyperlink,                        in source: "``abc``"

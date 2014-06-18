@@ -49,11 +49,15 @@ def _format_rem(text):
 def _format_em(text):
     return "{1}{0}{2}".format(text, *em_brackets)
 
+def _format_a(text):
+    return "{1}{0}{2}".format(text, *a_brackets)
+
 _format_function = {
     FORMAT_NONE: _format_none,
     FORMAT_SW: _format_sw,
     FORMAT_REM: _format_rem,
-    FORMAT_EM: _format_em
+    FORMAT_EM: _format_em,
+    FORMAT_A: _format_a
     }
 
 def formatted(o):
@@ -63,11 +67,11 @@ def formatted(o):
         return "".join([_format_function[e[0]](e[1]) for e in o])
 
 def title(e):
+    num = 0
     if isinstance(e, tuple):
         word, num = e
     elif isinstance(e, str):
         word = e
-        num = 0
     if num == 0:
         return word
     else:
@@ -122,7 +126,7 @@ class PrintDictionaryVisitor:
     
     def visit_form_content(self, e):
         sw, t = e
-        if sw == None:
+        if sw is None:
             self.lines.append("{1} {0}".format(title(t), form_link_marker))
         else:
             self.lines.append("{2} {3}{0}{3} {1}".format(sw, title(t), form_link_marker,
@@ -137,16 +141,18 @@ class PrintDictionaryVisitor:
     def visit_example(self, e):
         t1, t2 = e
         self.lines.append("{1} {0}".format(formatted(t1), example_marker))
-        self.lines.append("{1} {0}".format(formatted(t2), translation_marker))
+        if t2 is not None:
+            self.lines.append("{1} {0}".format(formatted(t2), translation_marker))
     
     def visit_idiom(self, e):
         t1, t2 = e
         self.lines.append("{1} {0}".format(formatted(t1), idiom_marker))
-        self.lines.append("{1} {0}".format(formatted(t2), translation_marker))
+        if t2 is not None:
+            self.lines.append("{1} {0}".format(formatted(t2), translation_marker))
     
     def visit_link(self, e):
         f, t = e
-        if f == None:
+        if f is None:
             self.lines.append("{1} {0}".format(title(t), link_marker))
         else:
             self.lines.append("{1}{2} {0}".format(title(t), f, link_marker))
